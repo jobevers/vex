@@ -142,7 +142,8 @@ def _main(environ, argv):
         return handle_shell_config(options.shell_to_configure, vexrc, environ)
     if options.list is not None:
         return handle_list(vexrc.get_ve_base(environ), options.list)
-
+    if options.python is None:
+        options.python = vexrc.get_default_python(environ)
     # Do as much as possible before a possible make, so errors can raise
     # without leaving behind an unused virtualenv.
     # get_virtualenv_name is destructive and must happen before get_command

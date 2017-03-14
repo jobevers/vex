@@ -44,8 +44,9 @@ class Vexrc(object):
     def __init__(self):
         self.encoding = self.default_encoding
         self.headings = OrderedDict()
-        self.headings[self.default_heading] = OrderedDict()
-        self.headings['env'] = OrderedDict()
+        defaults = [self.default_heading, 'env']
+        for default in defaults:
+            self.headings.setdefault(default, OrderedDict())
 
     def __getitem__(self, key):
         return self.headings.get(key)
@@ -74,6 +75,12 @@ class Vexrc(object):
                 self.headings[heading] = OrderedDict()
             self.headings[heading][key] = value
         parsing.close()
+
+    def get_default_python(self, environ):
+        """Find a command to run.
+        """
+        runtime = self.headings[self.default_heading].get('python')
+        return runtime if runtime else None
 
     def get_ve_base(self, environ):
         """Find a directory to look for virtualenvs in.

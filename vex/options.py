@@ -78,7 +78,7 @@ def make_arg_parser():
         action="store"
     )
     parser.add_argument(
-        '--version',
+        '-V', '--version',
         help="print the version of vex that is being run",
         action="store_true"
     )

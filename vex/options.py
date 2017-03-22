@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Manages virtual environments
 
-Usage: vex [options] <virtual_environment_name> [<rest>]
+Usage: vex [options] <virtual_environment_name> [<rest>...]
 
 Options:
        --always-copy         Use copies instead of creating symlinks
@@ -15,7 +15,7 @@ Options:
        --shell-config SHELL  Shell to use
        --site-packages       Allow system site package imports
     -V --version             Display version of vex
-    -X --exit                Run a make/remove command and immediately exit
+    -x --exit                Run a make/remove command and immediately exit
 """
 from docopt import docopt
 
@@ -98,7 +98,7 @@ def make_arg_parser(argv, docstring=None):
     """Return a standard ArgumentParser object.
     """
     docstring = docstring or __doc__
-    options = docopt(docstring, argv=argv)
+    options = docopt(docstring, argv=argv, options_first=True)
 
     parser = Arg(docopt_options=options)
     return parser

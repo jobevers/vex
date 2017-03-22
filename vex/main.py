@@ -147,11 +147,12 @@ def _main(environ, argv):
     ve_name = get_virtualenv_name(options)
     command = get_command(options, vexrc, environ)
     ve_path = get_virtualenv_path(ve_base, ve_name)
-    if not ve_path:
-        options.make = True
+    create_virtualenv = options.make
+    if not os.path.exists(ve_path):
+        create_virtualenv = True
     # Either we create ve_path, get it from options.path or find it
     # in ve_base.
-    if options.make:
+    if create_virtualenv:
         if options.path:
             make_path = os.path.abspath(options.path)
         else:
@@ -168,11 +169,18 @@ def _main(environ, argv):
     env['VEX'] = env.get('VEX') or os.path.basename(env.get('VIRTUAL_ENV') or '')
     returncode = None
     # if options.make or not (options.exit or options.remove):
-    if not options.exit:
+    if not create_virtualenv and options.remove and not options.exit:
+        handle_remove(ve_path)
+    elif create_virtualenv and options.remove:
         returncode = run(command, env=env, cwd=cwd)
         if returncode is None:
             raise exceptions.InvalidCommand("command not found: {0!r}".format(command[0]))
-    if options.remove:
+        handle_remove(ve_path)
+    elif not options.exit:
+        returncode = run(command, env=env, cwd=cwd)
+        if returncode is None:
+            raise exceptions.InvalidCommand("command not found: {0!r}".format(command[0]))
+    elif options.remove:
         handle_remove(ve_path)
     return returncode
 

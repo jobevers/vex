@@ -42,7 +42,7 @@ def get_virtualenv_name(options):
     if options.path:
         return os.path.dirname(options.path)
     else:
-        ve_name = options.rest.pop(0) if options.rest else ''
+        ve_name = options.virtual_environment_name
     if not ve_name:
         raise exceptions.NoVirtualenvName(
             "could not find a virtualenv name in the command line."
@@ -82,9 +82,6 @@ def get_virtualenv_path(ve_base, ve_name):
             'use "vex --path {0}"'.format(ve_path))
 
     ve_path = os.path.abspath(ve_path)
-    if not os.path.exists(ve_path):
-        raise exceptions.InvalidVirtualenv(
-            "no virtualenv found at {0!r}.".format(ve_path))
     return ve_path
 
 
@@ -115,15 +112,13 @@ def handle_list(ve_base, prefix=""):
     if not os.path.isdir(ve_base):
         sys.stderr.write("no virtualenvs directory at {0!r}\n".format(ve_base))
         return 1
-    text = "\n".join(
-        sorted(
-            relative_path for relative_path in os.listdir(ve_base)
-            if (not relative_path.startswith("-"))
-            and relative_path.startswith(prefix)
-            and os.path.isdir(os.path.join(ve_base, relative_path))
-        )
-    )
-    sys.stdout.write(text + "\n")
+    paths = [
+        path for path in os.listdir(ve_base)
+        if not path.startswith('-')
+        if path.startswith(prefix)
+        if os.path.isdir(os.path.join(ve_base, path))
+    ]
+    print('\n'.join(paths))
     return 0
 
 
@@ -138,11 +133,12 @@ def _main(environ, argv):
         return handle_version()
     vexrc = get_vexrc(options, environ)
     # Handle --shell-config as soon as its arguments are available.
-    if options.shell_to_configure:
-        return handle_shell_config(options.shell_to_configure, vexrc, environ)
-    if options.list is not None:
+    if options.shell_config:
+        return handle_shell_config(options.shell_config, vexrc, environ)
+    if options.list:
         return handle_list(vexrc.get_ve_base(environ), options.list)
-
+    if options.python is None:
+        options.python = vexrc.get_default_python(environ)
     # Do as much as possible before a possible make, so errors can raise
     # without leaving behind an unused virtualenv.
     # get_virtualenv_name is destructive and must happen before get_command
@@ -150,9 +146,13 @@ def _main(environ, argv):
     ve_base = vexrc.get_ve_base(environ)
     ve_name = get_virtualenv_name(options)
     command = get_command(options, vexrc, environ)
+    ve_path = get_virtualenv_path(ve_base, ve_name)
+    create_virtualenv = options.make
+    if not os.path.exists(ve_path):
+        create_virtualenv = True
     # Either we create ve_path, get it from options.path or find it
     # in ve_base.
-    if options.make:
+    if create_virtualenv:
         if options.path:
             make_path = os.path.abspath(options.path)
         else:
@@ -162,23 +162,26 @@ def _main(environ, argv):
     elif options.path:
         ve_path = os.path.abspath(options.path)
         if not os.path.exists(ve_path) or not os.path.isdir(ve_path):
-            raise exceptions.InvalidVirtualenv(
-                "argument for --path is not a directory")
-    else:
-        try:
-            ve_path = get_virtualenv_path(ve_base, ve_name)
-        except exceptions.NoVirtualenvName:
-            options.print_help()
-            raise
+            raise exceptions.InvalidVirtualenv("argument for --path is not a directory")
     # get_environ has to wait until ve_path is defined, which might
     # be after a make; of course we can't run until we have env.
     env = get_environ(environ, vexrc['env'], ve_path)
-    returncode = run(command, env=env, cwd=cwd)
-    if options.remove:
+    env['VEX'] = env.get('VEX') or os.path.basename(env.get('VIRTUAL_ENV') or '')
+    returncode = None
+    # if options.make or not (options.exit or options.remove):
+    if not create_virtualenv and options.remove and not options.exit:
         handle_remove(ve_path)
-    if returncode is None:
-        raise exceptions.InvalidCommand(
-            "command not found: {0!r}".format(command[0]))
+    elif create_virtualenv and options.remove:
+        returncode = run(command, env=env, cwd=cwd)
+        if returncode is None:
+            raise exceptions.InvalidCommand("command not found: {0!r}".format(command[0]))
+        handle_remove(ve_path)
+    elif not options.exit:
+        returncode = run(command, env=env, cwd=cwd)
+        if returncode is None:
+            raise exceptions.InvalidCommand("command not found: {0!r}".format(command[0]))
+    elif options.remove:
+        handle_remove(ve_path)
     return returncode
 
 

@@ -21,12 +21,12 @@ setup(
     license="MIT",
     long_description=LONG_DESCRIPTION,
     keywords="virtualenv virtualenvwrapper workon installation deployment",
-    install_requires=['virtualenv'],
+    install_requires=['virtualenv', 'docopt'],
     packages=['vex'],
     package_data={'vex': ['shell_configs/*']},
     scripts=['scripts/vex'],
-    entry_points = {
-        'console_scripts': ['vex = vex.main:main'],
+    entry_points={
+        'console_scripts': ['vex = vex.__main__:main'],
     },
     classifiers=[
         "Topic :: Utilities",
